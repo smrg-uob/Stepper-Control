@@ -32,7 +32,7 @@ mi.start_connection()
 
 
 # Note that the motor interface requires update ticks,
-# tgus can be done using a seperate clocking thread,
+# this can be done using a seperate clocking thread,
 # alternatively, the update_tick() method can be called from an existing clock loop.
 # Example for a dedicated thread: 
 
@@ -79,7 +79,7 @@ The example below shows how a motor controller object can be obtained:
 ````
 from motor.motor_control import MotorControl
 
-# create motor controller, which requires a COM port, timeout delay, and message feedback
+# create motor controller, which requires a COM port, timeout delay, and a message callback function
 mc = MotorControl('COM3', 10, msg_function)
 mc.start_connection()
 
@@ -87,6 +87,11 @@ mc.start_connection()
 if not mc.await_validation():
     print('Motor connection timed out')
     return
+
+
+# Example message function
+def msg_function(msg):
+    print(msg)
 ````
 
 Once an operational motor control object has been obtained, the motor can then be operated using the Python commands available in `motor_control.py`.
@@ -101,7 +106,7 @@ Once an operational motor control object has been obtained, the motor can then b
  - `mc.is_valid()`: Checks if the motor is in a valid state and not timed out.
  - `mc.is_validating()`: Checks if the motor is currently validating.
  - `mc.is_valid_or_validating()`: Checks if the motor is in a valid state, or is currently validating.
- - `mcis_stepping()`: Checks if the motor is currently stepping.
+ - `mc.is_stepping()`: Checks if the motor is currently stepping.
  - `mc.send_command(<cmd>)`: Sends a String command to the motor for execution, same commands as above.
  
  
