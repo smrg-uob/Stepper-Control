@@ -16,6 +16,9 @@ class MotorControl:
         #   2: await stepping
         #   3: stepping
         self.state = -1
+        # a flag if a command expecting a response, and the response value
+        self.command = False
+        self.command_response = -1
         # direction flag
         self.forwards = True
         # step and target flag
@@ -36,6 +39,14 @@ class MotorControl:
         # debug
         if self.debug:
             print('[DEBUG] Received value: \"' + str(value) + '\"')
+        # command replies
+        if self.command:
+            # store the reply
+            self.command_response = value
+            # reset the flags
+            self.command = False
+            self.time_stamp = -1
+            return
         # note: Python 2.7 does not have switch case statements yet
         if self.state == -1:
             # Invalid
@@ -149,6 +160,16 @@ class MotorControl:
                 self.time_stamp = time.time()
                 self.send_command('start')
 
+    def do_steps_and_wait_finish(self, steps):
+        # do the steps
+        self.do_steps(steps)
+        # wait until done stepping
+        while self.is_stepping():
+            # wait
+            time.sleep(0.05)
+        # return the number of steps
+        return self.last_step_count
+
     def stop_stepping(self):
         if self.is_stepping():
             # toggle flags
@@ -159,6 +180,51 @@ class MotorControl:
 
     def set_step_delay(self, delay):
         self.send_command('delay ' + str(delay))
+
+    def get_step_count(self):
+        # set command flag and time stamp
+        self.command = True
+        self.time_stamp = time.time()
+        # send the command
+        self.send_command('getStepCount')
+        # wait for response or timeout
+        return self.wait_for_response()
+
+    def get_step_target(self):
+        # set command flag and time stamp
+        self.command = True
+        self.time_stamp = time.time()
+        # send the command
+        self.send_command('getStepTarget')
+        # wait for response or timeout
+        return self.wait_for_response()
+
+    def is_forwards(self):
+        # set command flag and time stamp
+        self.command = True
+        self.time_stamp = time.time()
+        # send the command
+        self.send_command('isForward')
+        # wait for response or timeout
+        return self.wait_for_response()
+
+    def is_backwards(self):
+        # set command flag and time stamp
+        self.command = True
+        self.time_stamp = time.time()
+        # send the command
+        self.send_command('isBackward')
+        # wait for response or timeout
+        return self.wait_for_response()
+
+    def get_delay(self):
+        # set command flag and time stamp
+        self.command = True
+        self.time_stamp = time.time()
+        # send the command
+        self.send_command('getDelay')
+        # wait for response or timeout
+        return self.wait_for_response()
 
     def is_valid(self):
         return self.state > 0
@@ -176,3 +242,20 @@ class MotorControl:
         if self.debug:
             print('[DEBUG] Sending command: \"' + cmd + '\"')
         self.mi.send_command(cmd)
+
+    def wait_for_response(self):
+        while True:
+            if self.is_valid():
+                # check if a response was received
+                if self.command:
+                    # no response yet
+                    time.sleep(0.05)
+                    continue
+                else:
+                    # get the reply and reset it
+                    value = self.command_response
+                    self.command_response = -1
+                    return value
+            else:
+                # timed out
+                return -1
