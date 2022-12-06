@@ -114,6 +114,7 @@ class MotorControl:
     def get_port(self):
         return self.mi.get_port()
 
+    # starts up the connection with the motor
     def start_connection(self):
         # start the connection
         self.mi.start_connection()
@@ -121,13 +122,14 @@ class MotorControl:
         if self.mi.is_running():
             # start the clock thread
             self.clock_thread.start()
-            # perform validation test
-            self.state = 0
             # short delay
             time.sleep(1)
+            # perform validation test
+            self.state = 0
             self.time_stamp = time.time()
             self.send_command('stepper_control')
 
+    # halts program execution until the motor connection has been validated or timed out
     def await_validation(self):
         while True:
             if self.is_validating():
@@ -140,10 +142,14 @@ class MotorControl:
                 else:
                     return False
 
+    # stops the motor connection
     def stop_connection(self):
         self.state = -1
         self.mi.stop_connection()
 
+    # sends a command to the motor to execute a number of steps
+    # only works if the motor is not currently stepping, or already stepping in the same direction
+    # pass in positive value to step clockwise, a negative value to step anti-clockwise
     def do_steps(self, steps):
         if self.is_valid():
             if self.is_stepping():
@@ -182,6 +188,7 @@ class MotorControl:
                 self.time_stamp = time.time()
                 self.send_command('start')
 
+    # same as 'do_steps()', but also halts program execution until the motor has finished stepping
     def do_steps_and_wait_finish(self, steps):
         # do the steps
         self.do_steps(steps)
@@ -192,6 +199,7 @@ class MotorControl:
         # return the number of steps
         return self.last_step_count
 
+    # sends a command to the motor to stop stepping
     def stop_stepping(self):
         if self.is_stepping():
             # toggle flags
@@ -200,9 +208,12 @@ class MotorControl:
             # send stop command
             self.send_command('stop')
 
+    # sets the stepping delay, minimum value is 2
     def set_step_delay(self, delay):
         self.send_command('delay ' + str(delay))
 
+    # sends a command to the motor to query its current step count
+    # halts program execution until a reply has been received, or the connection has timed out
     def get_step_count(self):
         # set command flag and time stamp
         self.command = True
@@ -210,8 +221,10 @@ class MotorControl:
         # send the command
         self.send_command('getStepCount')
         # wait for response or timeout
-        return self.wait_for_response()
+        return self.__wait_for_response()
 
+    # sends a command to the motor to query its current step target
+    # halts program execution until a reply has been received, or the connection has timed out
     def get_step_target(self):
         # set command flag and time stamp
         self.command = True
@@ -219,8 +232,10 @@ class MotorControl:
         # send the command
         self.send_command('getStepTarget')
         # wait for response or timeout
-        return self.wait_for_response()
+        return self.__wait_for_response()
 
+    # sends a command to the motor to query if it is running clockwise
+    # halts program execution until a reply has been received, or the connection has timed out
     def is_forwards(self):
         # set command flag and time stamp
         self.command = True
@@ -228,8 +243,10 @@ class MotorControl:
         # send the command
         self.send_command('isForward')
         # wait for response or timeout
-        return self.wait_for_response()
+        return self.__wait_for_response()
 
+    # sends a command to the motor to query if it is running anti-clockwise
+    # halts program execution until a reply has been received, or the connection has timed out
     def is_backwards(self):
         # set command flag and time stamp
         self.command = True
@@ -237,8 +254,10 @@ class MotorControl:
         # send the command
         self.send_command('isBackward')
         # wait for response or timeout
-        return self.wait_for_response()
+        return self.__wait_for_response()
 
+    # sends a command to the motor to query its current step delay
+    # halts program execution until a reply has been received, or the connection has timed out
     def get_delay(self):
         # set command flag and time stamp
         self.command = True
@@ -246,20 +265,25 @@ class MotorControl:
         # send the command
         self.send_command('getDelay')
         # wait for response or timeout
-        return self.wait_for_response()
+        return self.__wait_for_response()
 
+    # checks if the motor control is in a valid state, meaning it is connected to the controller with an open connection
     def is_valid(self):
         return self.state > 0
 
+    # checks if the motor control is currently validating, meaning it is not yet in a valid state, but might be soon
     def is_validating(self):
         return self.state == 0
 
+    # checks if the motor control is currently valid, or still validating
     def is_valid_or_validating(self):
         return self.state >= 0
 
+    # checks if the motor is currently stepping
     def is_stepping(self):
         return self.state >= 2
 
+    # sends a String command to the motor for interpretation
     def send_command(self, cmd):
         if self.debug:
             print('[DEBUG] Sending command: \"' + cmd + '\"')
