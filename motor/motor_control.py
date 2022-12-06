@@ -224,6 +224,14 @@ class MotorControl:
         # wait for response or timeout
         return self.__wait_for_response()
 
+    # gets the latest amount of steps that were completed
+    def get_last_step_count(self):
+        return self.last_step_count
+
+    # gets the latest amount of steps that were sent to the motor as a command
+    def get_last_step_command(self):
+        return self.last_step_command
+
     # sends a command to the motor to query its current step target
     # halts program execution until a reply has been received, or the connection has timed out
     def get_step_target(self):

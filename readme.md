@@ -106,6 +106,8 @@ Once an operational motor control object has been obtained, the motor can then b
  - `mc.set_step_delay(<delay>)`: sets the step delay for the motor (minimum is `2`).
  - `mc.get_step_count()`: queries the motor's current step count, halts program execution until a response is received, or the motor connection times out.
  - `mc.get_step_target()`: queries the motor's current step target, halts program execution until a response is received, or the motor connection times out.
+ - `mc.get_last_step_count()`: gets the latest amount of steps that were completed
+ - `mc.get_last_step_command()`: gets the latest amount of steps that were sent to the motor as a command
  - `mc.is_forwards()`: queries if the motor is currently running clockwise, halts program execution until a response is received, or the motor connection times out.
  - `mc.is_backwards()`: queries the motor's currently running anti-clockwise, halts program execution until a response is received, or the motor connection times out.
  - `mc.get_delay()`: queries the motor's current step delay, halts program execution until a response is received, or the motor connection times out.
