@@ -8,7 +8,7 @@ class MotorControl:
         # message callback function
         self.message_func = message_func
         # motor interface
-        self.mi = MotorInterface(port, self.value_func, self.message_func)
+        self.mi = MotorInterface(port, self.__value_func, self.message_func)
         # state flag:
         #  -1: invalid
         #   0: validating
@@ -32,10 +32,10 @@ class MotorControl:
         # debug mode
         self.debug = debug
         # Thread for handling values
-        self.clock_thread = threading.Thread(target=self.clock_func)
+        self.clock_thread = threading.Thread(target=self.__clock_func)
 
-    # method to handle value responses
-    def value_func(self, value):
+    # method to handle value responses, internal use only, do not call
+    def __value_func(self, value):
         # debug
         if self.debug:
             print('[DEBUG] Received value: \"' + str(value) + '\"')
@@ -72,8 +72,8 @@ class MotorControl:
             self.last_step_count = value
             pass
 
-    # clock thread
-    def clock_func(self):
+    # Clock thread function, internal use only, do not call
+    def __clock_func(self):
         while self.mi.is_running():
             # tick the interface clock
             self.mi.update_tick()
@@ -91,6 +91,28 @@ class MotorControl:
                 self.stop_connection()
             # short delay
             time.sleep(0.1)
+
+    # Internal use only, do not call
+    def __wait_for_response(self):
+        while True:
+            if self.is_valid():
+                # check if a response was received
+                if self.command:
+                    # no response yet
+                    time.sleep(0.05)
+                    continue
+                else:
+                    # get the reply and reset it
+                    value = self.command_response
+                    self.command_response = -1
+                    return value
+            else:
+                # timed out
+                return -1
+
+    # get the port used for communicating
+    def get_port(self):
+        return self.mi.get_port()
 
     def start_connection(self):
         # start the connection
@@ -242,20 +264,3 @@ class MotorControl:
         if self.debug:
             print('[DEBUG] Sending command: \"' + cmd + '\"')
         self.mi.send_command(cmd)
-
-    def wait_for_response(self):
-        while True:
-            if self.is_valid():
-                # check if a response was received
-                if self.command:
-                    # no response yet
-                    time.sleep(0.05)
-                    continue
-                else:
-                    # get the reply and reset it
-                    value = self.command_response
-                    self.command_response = -1
-                    return value
-            else:
-                # timed out
-                return -1

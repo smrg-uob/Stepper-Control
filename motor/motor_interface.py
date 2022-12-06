@@ -19,16 +19,12 @@ class MotorInterface:
         self.value_func = value_func
         self.message_func = message_func
         # Thread for reading messages
-        self.read_thread = threading.Thread(target=self.read_func)
+        self.read_thread = threading.Thread(target=self.__read_func)
         # Thread for writing messages
-        self.write_thread = threading.Thread(target=self.write_func)
+        self.write_thread = threading.Thread(target=self.__write_func)
 
-    # get the port used for communicating
-    def get_port(self):
-        return self.port
-
-    # method for reading, to be ran on a separate thread
-    def read_func(self):
+    # method for reading, to be ran on a separate thread, internal use only, do not call
+    def __read_func(self):
         while self.running:
             # read the line
             try:
@@ -46,18 +42,18 @@ class MotorInterface:
                 prefix = ln[0:3]
                 if prefix == '[m]':
                     # handle the message
-                    self.handle_message(ln[3:])
+                    self.__handle_message(ln[3:])
                 elif prefix == '[v]':
                     # handle a value
                     try:
-                        self.handle_value(int(ln[3:]))
+                        self.__handle_value(int(ln[3:]))
                     except ValueError:
-                        self.handle_invalid_value(ln[3:])
+                        self.__handle_invalid_value(ln[3:])
             # short delay
             time.sleep(0.05)
 
-    # method for writing, to be ran on a separate thread
-    def write_func(self):
+    # method for writing, to be ran on a separate thread, internal use only, do not call
+    def __write_func(self):
         while self.running:
             # if there are commands to send, send them one by one
             if len(self.command_buffer) > 0:
@@ -73,6 +69,24 @@ class MotorInterface:
             # short delay
             time.sleep(0.05)
 
+    # method to handle feedback, internal use only, do not call
+    def __handle_message(self, message):
+        self.message_func(message.rstrip())
+
+    # method to handle value replies, internal use only, do not call
+    def __handle_value(self, value):
+        # we need a buffer here to handle them on the main thread
+        self.value_buffer.append(value)
+        debug = True
+
+    # method to handle invalid values, internal use only, do not call
+    def __handle_invalid_value(self, message):
+        self.__handle_message(("Received invalid value: " + str(message)))
+
+    # get the port used for communicating
+    def get_port(self):
+        return self.port
+
     # tick loop method, must be called externally
     def update_tick(self):
         if len(self.value_buffer) > 0:
@@ -82,20 +96,6 @@ class MotorInterface:
             # Handle all values
             for value in values:
                 self.value_func(value)
-
-    # method to handle feedback
-    def handle_message(self, message):
-        self.message_func(message.rstrip())
-
-    # method to handle value replies
-    def handle_value(self, value):
-        # we need a buffer here to handle them on the main thread
-        self.value_buffer.append(value)
-        debug = True
-
-    # method to handle invalid values
-    def handle_invalid_value(self, message):
-        self.handle_message(("Received invalid value: " + str(message)))
 
     # logs a command to be sent
     def send_command(self, cmd):
