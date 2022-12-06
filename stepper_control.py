@@ -1,3 +1,5 @@
+import serial.tools.list_ports
+
 from motor.motor_control import MotorControl
 from motor.motor_interface import MotorInterface
 
@@ -17,3 +19,8 @@ def create_motor_controller(port, time_out, message_func, debug=False):
 # - message_func: a function reference accepting a single String as parameter
 def create_motor_interface(port, value_func, message_func):
     return MotorInterface(port, value_func, message_func)
+
+
+# Lists serial port names
+def list_serial_ports():
+    return serial.tools.list_ports.comports()
