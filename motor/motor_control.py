@@ -39,7 +39,7 @@ class MotorControl:
     def __value_func(self, value):
         # debug
         if self.debug:
-            print('[DEBUG] Received value: \"' + str(value) + '\"')
+            self.message_func('[DEBUG] Received value: \"' + str(value) + '\"')
         # command replies
         if self.command:
             # store the reply
@@ -295,5 +295,5 @@ class MotorControl:
     # sends a String command to the motor for interpretation
     def send_command(self, cmd):
         if self.debug:
-            print('[DEBUG] Sending command: \"' + cmd + '\"')
+            self.message_func('[DEBUG] Sending command: \"' + cmd + '\"')
         self.mi.send_command(cmd)
