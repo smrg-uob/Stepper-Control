@@ -5,6 +5,7 @@ import traceback
 from serial.serialutil import SerialException
 
 
+# Class to interface with the stepper motor using String commands
 class MotorInterface:
     def __init__(self, port, value_func, message_func):
         # Serial

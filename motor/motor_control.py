@@ -3,6 +3,7 @@ import time
 from motor_interface import MotorInterface
 
 
+# Class to control the stepper motor using Python commands
 class MotorControl:
     def __init__(self, port, time_out, message_func, debug=False):
         # message callback function
