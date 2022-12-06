@@ -4,6 +4,17 @@ Python scripts to control a stepper motor over USB.
 Two modules are provided
  - `motor_interface.py`: this script provides an interface to communicate with the stepper motor using text commands
  - `motor_control.py`: this script provides a more abstract interface to communicate with the stepper motor using Python methods
+ 
+ Furthermore, the module `stepper_control.py` provides quick access to both of these:
+ ````
+import stepper_control
+
+# obtain a motor interface:
+mi = stepper_control.create_motor_interface(port, value_func, message_func)
+
+# obtain a motor controller:
+mc = stepper_control.create_motor_controller(port, time_out, message_func)
+ ````
 
 
 ## `motor_interface.py`
