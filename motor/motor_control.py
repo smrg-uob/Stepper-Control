@@ -24,7 +24,7 @@ class MotorControl:
         self.forwards = True
         # step and target flag
         self.last_step_command = 0
-        self.last_step_count = 0
+        self.last_step_count = -1
         self.step_target = 0
         # time stamp of last command
         self.time_stamp = -1
@@ -69,8 +69,8 @@ class MotorControl:
             self.time_stamp = -1
         elif self.state == 3:
             # finished stepping
-            self.state = 1
             self.last_step_count = value
+            self.state = 1
             pass
 
     # Clock thread function, internal use only, do not call
@@ -181,7 +181,7 @@ class MotorControl:
                     # we just ignore zero steps
                     return
                 # send the number of steps
-                self.last_step_count = 0
+                self.last_step_count = -1
                 self.last_step_command = abs(steps)
                 self.send_command('step ' + str(abs(steps)))
                 # start stepping
@@ -204,7 +204,7 @@ class MotorControl:
     def stop_stepping(self):
         if self.is_stepping():
             # toggle flags
-            self.state = 1
+            self.state = 3
             self.time_stamp = -1
             # send stop command
             self.send_command('stop')

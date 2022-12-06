@@ -78,7 +78,6 @@ class MotorInterface:
     def __handle_value(self, value):
         # we need a buffer here to handle them on the main thread
         self.value_buffer.append(value)
-        debug = True
 
     # method to handle invalid values, internal use only, do not call
     def __handle_invalid_value(self, message):
