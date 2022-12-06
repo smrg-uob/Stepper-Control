@@ -101,8 +101,14 @@ Once an operational motor control object has been obtained, the motor can then b
  - `mc.await_validation()`: waits until the motor connection has been validated or timed out.
  - `mc.stop_connection()`: stops the connection with the motor.
  - `mc.do_steps(<steps>)`: makes the motor perform `<steps>` (positive values for clockwise, negative for anti-clockwise).
+ - `mc.do_steps_and_wait_finish(<steps>)`: same as `mc.do_steps(<steps>)`, but also halts program execution until stepping is completed.
  - `mc.stop_stepping()`: interrupts the motor, forcing it to stop stepping.
  - `mc.set_step_delay(<delay>)`: sets the step delay for the motor (minimum is `2`).
+ - `mc.get_step_count()`: queries the motor's current step count, halts program execution until a response is received, or the motor connection times out.
+ - `mc.get_step_target()`: queries the motor's current step target, halts program execution until a response is received, or the motor connection times out.
+ - `mc.is_forwards()`: queries if the motor is currently running clockwise, halts program execution until a response is received, or the motor connection times out.
+ - `mc.is_backwards()`: queries the motor's currently running anti-clockwise, halts program execution until a response is received, or the motor connection times out.
+ - `mc.get_delay()`: queries the motor's current step delay, halts program execution until a response is received, or the motor connection times out.
  - `mc.is_valid()`: Checks if the motor is in a valid state and not timed out.
  - `mc.is_validating()`: Checks if the motor is currently validating.
  - `mc.is_valid_or_validating()`: Checks if the motor is in a valid state, or is currently validating.
