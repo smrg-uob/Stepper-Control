@@ -132,6 +132,5 @@ dmypy.json
 .pyre/
 
 # Testing code
-__init__.py
 control_test.py
 interface_test.py
