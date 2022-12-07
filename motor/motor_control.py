@@ -118,9 +118,9 @@ class MotorControl:
     # starts up the connection with the motor
     def start_connection(self):
         # start the connection
-        self.mi.start_connection()
+        running = self.mi.start_connection()
         # check if the connection is running
-        if self.mi.is_running():
+        if running:
             # start the clock thread
             self.clock_thread.start()
             # short delay
@@ -129,6 +129,7 @@ class MotorControl:
             self.state = 0
             self.time_stamp = time.time()
             self.send_command('stepper_control')
+        return running
 
     # halts program execution until the motor connection has been validated or timed out
     def await_validation(self):

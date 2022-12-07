@@ -120,6 +120,8 @@ class MotorInterface:
     # method to stop the connection
     def stop_connection(self):
         self.running = False
+        if self.ser is not None:
+            self.ser.close()
 
     # method to check if the connection is running
     def is_running(self):
