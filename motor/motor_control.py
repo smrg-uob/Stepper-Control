@@ -90,8 +90,14 @@ class MotorControl:
                 self.time_stamp = -1
                 # close the connection
                 self.stop_connection()
+                return
             # short delay
             time.sleep(0.1)
+        # no longer running: toggle the state:
+        self.message_func('Connection lost')
+        # toggle flags
+        self.state = -1
+        self.time_stamp = -1
 
     # Internal use only, do not call
     def __wait_for_response(self):
