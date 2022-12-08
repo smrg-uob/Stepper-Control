@@ -83,7 +83,7 @@ void handleCommand() {
 bool parseCommand() {
   // Polling command to confirm the presence of the controller
   if (cmd.equals("stepper_control")) {
-    sendValue(1);
+    sendConfirmation(1);
     return true;
   }
   // Command to start stepping
@@ -168,8 +168,8 @@ bool parseCommand() {
     if (steps > 0) {
       // add the steps to the target
       stepTarget = stepTarget + steps;
-      // send the current step target
-      sendValue(stepTarget);
+      // send a confirmation the current step target
+      sendConfirmation(stepTarget);
     }
     return true;
   }
@@ -186,8 +186,6 @@ bool parseCommand() {
       // send a message in case of invalid delay
       sendMessage("Delay must be larger than 1 (minimum 2)");
     }
-    // send the current delay
-    sendValue(stepDelay);
     return true;
   }
   return false;
@@ -196,8 +194,8 @@ bool parseCommand() {
 
 // method to stop stepping
 void stop() {
-      // Send the number of steps
-      sendValue(stepCounter);
+      // Send a confirmation of the number of steps
+      sendConfirmation(stepCounter);
       // Log a message
       String msg = "Stopped after ";
       sendMessage(msg + stepCounter + "/" + stepTarget + " steps.");
@@ -215,8 +213,8 @@ void run() {
     stepCounter = stepCounter + 1;
     // check if step target is reached
     if (stepCounter >= stepTarget) {
-      // Send the number of steps
-      sendValue(stepCounter);
+      // Send a confirmation of the number of steps
+      sendConfirmation(stepCounter);
       // Log a message
       String msg = "Completed ";
       sendMessage(msg + stepCounter + " steps.");
@@ -270,5 +268,12 @@ void sendMessage(String msg) {
 // method to send a value
 void sendValue(int value) {
   String msg = "[v]";
+  Serial.println(msg + value);
+}
+
+
+// method to send a confirmation
+void sendConfirmation(int value) {
+  String msg = "[c]";
   Serial.println(msg + value);
 }

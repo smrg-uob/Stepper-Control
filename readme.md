@@ -10,7 +10,7 @@ Two modules are provided
 import stepper_control
 
 # obtain a motor interface:
-mi = stepper_control.create_motor_interface(port, value_func, message_func)
+mi = stepper_control.create_motor_interface(port, value_func, confirmation_func, message_func)
 
 # obtain a motor controller:
 mc = stepper_control.create_motor_controller(port, time_out, message_func)
@@ -24,13 +24,18 @@ The example below shows how a motor interface object can be obtained:
 ````
 from motor.motor_interface import MotorInterface
 
-# the interface requires a COM port, and callback functions for values and messages
-mi = MotorInterface('COM1', value_function, msg_function)
+# the interface requires a COM port, and callback functions for values, confirmations, and messages
+mi = MotorInterface('COM1', value_function, confirmation_function, msg_function)
 
 
 # Example value function (value will always be an int):
 def value_function(value):
     print('Received value \": ' + str(value) + '\"')
+
+
+# Example confirmation function (value will always be an int):
+def confirmation_function(value):
+    print('Received confirmation \": ' + str(value) + '\"')
 
 
 # Example msg function (msg will always be a string):
@@ -114,19 +119,23 @@ Once an operational motor control object has been obtained, the motor can then b
  - `mc.do_steps(<steps>)`: makes the motor perform `<steps>` (positive values for clockwise, negative for anti-clockwise).
  - `mc.do_steps_and_wait_finish(<steps>)`: same as `mc.do_steps(<steps>)`, but also halts program execution until stepping is completed.
  - `mc.stop_stepping()`: interrupts the motor, forcing it to stop stepping.
+ - `mc.get_last_step_count()`: gets the latest amount of steps that were completed
+ - `mc.get_last_step_command()`: gets the latest amount of steps that were sent to the motor as a command
  - `mc.set_step_delay(<delay>)`: sets the step delay for the motor (minimum is `2`).
  - `mc.get_step_count()`: queries the motor's current step count, halts program execution until a response is received, or the motor connection times out.
  - `mc.get_step_target()`: queries the motor's current step target, halts program execution until a response is received, or the motor connection times out.
- - `mc.get_last_step_count()`: gets the latest amount of steps that were completed
- - `mc.get_last_step_command()`: gets the latest amount of steps that were sent to the motor as a command
  - `mc.is_forwards()`: queries if the motor is currently running clockwise, halts program execution until a response is received, or the motor connection times out.
  - `mc.is_backwards()`: queries the motor's currently running anti-clockwise, halts program execution until a response is received, or the motor connection times out.
  - `mc.get_delay()`: queries the motor's current step delay, halts program execution until a response is received, or the motor connection times out.
+ - `mc.poll_step_count(callback)`: polls the motor's current step count, does not halt program execution, the callback is called when the reply is received.
+ - `mc.poll_step_target(callback)`: polls the motor's current step target, does not halt program execution, the callback is called when the reply is received.
+ - `mc.poll_forwards(callback)`: polls if the motor is currently running clockwise, does not halt program execution, the callback is called when the reply is received.
+ - `mc.poll_backwards(callback)`: polls the motor is currently running anti-clockwise, does not halt program execution, the callback is called when the reply is received.
+ - `mc.poll_delay(callback)`: polls the motor's current step delay, does not halt program execution, the callback is called when the reply is received.
  - `mc.is_valid()`: Checks if the motor is in a valid state and not timed out.
  - `mc.is_validating()`: Checks if the motor is currently validating.
  - `mc.is_valid_or_validating()`: Checks if the motor is in a valid state, or is currently validating.
  - `mc.is_stepping()`: Checks if the motor is currently stepping.
- - `mc.send_command(<cmd>)`: Sends a String command to the motor for execution, same commands as above.
  
  
  ## Arduino

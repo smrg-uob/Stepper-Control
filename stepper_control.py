@@ -16,9 +16,10 @@ def create_motor_controller(port, time_out, message_func, debug=False):
 # Creates a new motor interface object
 # - port: a string specifying the COM port (e.g. 'COM3')
 # - value_func: a function reference accepting a single integer as parameter
+# - confirmation_function: a function reference accepting a single integer as parameter
 # - message_func: a function reference accepting a single String as parameter
-def create_motor_interface(port, value_func, message_func):
-    return MotorInterface(port, value_func, message_func)
+def create_motor_interface(port, value_func, confirmation_function, message_func):
+    return MotorInterface(port, value_func, confirmation_function, message_func)
 
 
 # Lists serial port names

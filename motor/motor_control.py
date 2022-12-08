@@ -9,7 +9,7 @@ class MotorControl:
         # message callback function
         self.message_func = message_func
         # motor interface
-        self.mi = MotorInterface(port, self.__value_func, self.message_func)
+        self.mi = MotorInterface(port, self.__value_func, self.__confirm_func, self.message_func)
         # state flag:
         #  -1: invalid
         #   0: validating
@@ -17,9 +17,8 @@ class MotorControl:
         #   2: await stepping
         #   3: stepping
         self.state = -1
-        # a flag if a command expecting a response, and the response value
-        self.command = False
-        self.command_response = -1
+        # command callbacks
+        self.command_callbacks = []
         # direction flag
         self.forwards = True
         # step and target flag
@@ -40,14 +39,15 @@ class MotorControl:
         # debug
         if self.debug:
             self.message_func('[DEBUG] Received value: \"' + str(value) + '\"')
-        # command replies
-        if self.command:
-            # store the reply
-            self.command_response = value
-            # reset the flags
-            self.command = False
-            self.time_stamp = -1
-            return
+        if len(self.command_callbacks) > 0:
+            # command reply
+            command = self.command_callbacks.pop(0)
+            command.accept_value(value)
+        else:
+            self.message_func('Error: received a value without commands')
+
+    # method to handle confirmation responses, internal use only, do not call
+    def __confirm_func(self, value):
         # note: Python 2.7 does not have switch case statements yet
         if self.state == -1:
             # Invalid
@@ -71,7 +71,6 @@ class MotorControl:
             # finished stepping
             self.last_step_count = value
             self.state = 1
-            pass
 
     # Clock thread function, internal use only, do not call
     def __clock_func(self):
@@ -82,15 +81,27 @@ class MotorControl:
             if self.time_stamp < 0:
                 # not waiting for a reply, nothing must be done
                 pass
-            # if we are waiting for a reply, check for timeout
+            # if we are waiting for a confirmation reply, check for timeout
             elif time.time() - self.time_stamp >= self.time_out:
+                # log message
                 self.message_func('Connection timed out')
                 # toggle flags
                 self.state = -1
                 self.time_stamp = -1
+                if self.command_flag:
+                    self.command_flag = False
+                # return 'None' on the callback
+                if self.command_callback is not None:
+                    self.command_callback(None)
+                    self.command_callback = None
                 # close the connection
                 self.stop_connection()
                 return
+            # check commands for time outs
+            for command in self.command_callbacks:
+                if command.is_timed_out():
+                    command.accept_value(None)
+                    self.command_callbacks.remove(command)
             # short delay
             time.sleep(0.1)
         # no longer running: toggle the state:
@@ -99,23 +110,46 @@ class MotorControl:
         self.state = -1
         self.time_stamp = -1
 
-    # Internal use only, do not call
-    def __wait_for_response(self):
-        while True:
-            if self.is_valid():
-                # check if a response was received
-                if self.command:
-                    # no response yet
-                    time.sleep(0.05)
-                    continue
-                else:
-                    # get the reply and reset it
-                    value = self.command_response
-                    self.command_response = -1
-                    return value
-            else:
-                # timed out
-                return -1
+    # sends a String command to the motor for interpretation, internal use only, do not call
+    def __send_string_command(self, cmd):
+        if self.debug:
+            self.message_func('[DEBUG] Sending command: \"' + cmd + '\"')
+        self.mi.send_command(cmd)
+
+    # submits a String command for sending, expecting a reply, internal use only, do not call
+    def __submit_value_command(self, command_string):
+        # create a value command
+        command_object = _ValueCommand()
+        # submit the command
+        self.__submit_command(command_string, command_object)
+        # return the command
+        return command_object
+
+    # submits a command, internal use only, do not call
+    def __submit_command(self, command_string, command):
+        # check if there is a valid connection
+        if self.is_valid():
+            # add the command to the queue
+            self.command_callbacks.append(command)
+            # send the string command
+            self.__send_string_command(command_string)
+        else:
+            # if there is not a valid connection, give the command a None reply
+            command.accept_value(None)
+
+    # waits for a response or time_out, internal use, do not call
+
+    # waits for a reply on a value command
+    def __wait_for_reply_or_time_out(self, value_command):
+        # check if it is an actual value command
+        if isinstance(value_command, _ValueCommand):
+            while True:
+                if value_command.has_reply():
+                    return value_command.get_value()
+                if value_command.is_timed_out(self.time_out):
+                    return None
+        # default to returning None
+        return None
 
     # get the port used for communicating
     def get_port(self):
@@ -134,7 +168,7 @@ class MotorControl:
             # perform validation test
             self.state = 0
             self.time_stamp = time.time()
-            self.send_command('stepper_control')
+            self.__send_string_command('stepper_control')
         return running
 
     # halts program execution until the motor connection has been validated or timed out
@@ -154,6 +188,10 @@ class MotorControl:
     def stop_connection(self):
         self.state = -1
         self.mi.stop_connection()
+        # clear all commands
+        for command in self.command_callbacks:
+            command.accept_value(None)
+        self.command_callbacks = []
 
     # sends a command to the motor to execute a number of steps
     # only works if the motor is not currently stepping, or already stepping in the same direction
@@ -166,12 +204,12 @@ class MotorControl:
                     # forwards: add the steps
                     self.state = 2
                     self.last_step_command += steps
-                    self.send_command('step ' + str(steps))
+                    self.__send_string_command('step ' + str(steps))
                 elif (not self.forwards) and steps < 0:
                     # backwards: add the steps
                     self.state = 2
                     self.last_step_command -= steps
-                    self.send_command('step ' + str(abs(steps)))
+                    self.__send_string_command('step ' + str(abs(steps)))
                 else:
                     self.message_func('Motor is currently stepping in the opposite direction, ignoring command')
             else:
@@ -179,22 +217,22 @@ class MotorControl:
                 if steps < 0:
                     # tell the motor to turn backwards
                     self.forwards = False
-                    self.send_command('backwards')
+                    self.__send_string_command('backwards')
                 elif steps > 0:
                     # tell the motor to turn forwards
                     self.forwards = True
-                    self.send_command('forwards')
+                    self.__send_string_command('forwards')
                 else:
                     # we just ignore zero steps
                     return
                 # send the number of steps
                 self.last_step_count = -1
                 self.last_step_command = abs(steps)
-                self.send_command('step ' + str(abs(steps)))
+                self.__send_string_command('step ' + str(abs(steps)))
                 # start stepping
                 self.state = 2
                 self.time_stamp = time.time()
-                self.send_command('start')
+                self.__send_string_command('start')
 
     # same as 'do_steps()', but also halts program execution until the motor has finished stepping
     def do_steps_and_wait_finish(self, steps):
@@ -214,22 +252,20 @@ class MotorControl:
             self.state = 3
             self.time_stamp = -1
             # send stop command
-            self.send_command('stop')
+            self.__send_string_command('stop')
 
     # sets the stepping delay, minimum value is 2
     def set_step_delay(self, delay):
-        self.send_command('delay ' + str(delay))
+        self.__send_string_command('delay ' + str(delay))
 
     # sends a command to the motor to query its current step count
     # halts program execution until a reply has been received, or the connection has timed out
+    # returns None if the connection has been lost or is timed out
     def get_step_count(self):
-        # set command flag and time stamp
-        self.command = True
-        self.time_stamp = time.time()
         # send the command
-        self.send_command('getStepCount')
+        command = self.__submit_value_command('getStepCount')
         # wait for response or timeout
-        return self.__wait_for_response()
+        return self.__wait_for_reply_or_time_out(command)
 
     # gets the latest amount of steps that were completed
     def get_last_step_count(self):
@@ -241,47 +277,74 @@ class MotorControl:
 
     # sends a command to the motor to query its current step target
     # halts program execution until a reply has been received, or the connection has timed out
+    # returns None if the connection has been lost or is timed out
     def get_step_target(self):
-        # set command flag and time stamp
-        self.command = True
-        self.time_stamp = time.time()
         # send the command
-        self.send_command('getStepTarget')
+        command = self.__submit_value_command('getStepTarget')
         # wait for response or timeout
-        return self.__wait_for_response()
+        return self.__wait_for_reply_or_time_out(command)
 
-    # sends a command to the motor to query if it is running clockwise
+    # sends a command to the motor to query if it's running clockwise
     # halts program execution until a reply has been received, or the connection has timed out
+    # returns None if the connection has been lost or is timed out
     def is_forwards(self):
-        # set command flag and time stamp
-        self.command = True
-        self.time_stamp = time.time()
         # send the command
-        self.send_command('isForward')
+        command = self.__submit_value_command('isForward')
         # wait for response or timeout
-        return self.__wait_for_response()
+        return self.__wait_for_reply_or_time_out(command)
 
-    # sends a command to the motor to query if it is running anti-clockwise
+    # sends a command to the motor to query if it's running anti-clockwise
     # halts program execution until a reply has been received, or the connection has timed out
+    # returns None if the connection has been lost or is timed out
     def is_backwards(self):
-        # set command flag and time stamp
-        self.command = True
-        self.time_stamp = time.time()
         # send the command
-        self.send_command('isBackward')
+        command = self.__submit_value_command('isBackward')
         # wait for response or timeout
-        return self.__wait_for_response()
+        return self.__wait_for_reply_or_time_out(command)
 
     # sends a command to the motor to query its current step delay
     # halts program execution until a reply has been received, or the connection has timed out
+    # returns None if the connection has been lost or is timed out
     def get_delay(self):
-        # set command flag and time stamp
-        self.command = True
-        self.time_stamp = time.time()
         # send the command
-        self.send_command('getDelay')
+        command = self.__submit_value_command('getDelay')
         # wait for response or timeout
-        return self.__wait_for_response()
+        return self.__wait_for_reply_or_time_out(command)
+
+    # polls the step count by sending a command to query its current step count
+    # the callback function is called whenever the reply is received
+    # the callback will be called with 'None' if the connection is been lost or timed out
+    def poll_step_count(self, callback):
+        # submit the command
+        self.__submit_command('getStepCount', _Command(callback))
+
+    # polls the step target by sending a command to query its current step target
+    # the callback function is called whenever the reply is received
+    # the callback will be called with 'None' if the connection is been lost or timed out
+    def poll_step_target(self, callback):
+        # submit the command
+        self.__submit_command('getStepTarget', _Command(callback))
+
+    # polls the forwards state by sending a command to query if it's currently running clockwise
+    # the callback function is called whenever the reply is received
+    # the callback will be called with 'None' if the connection is been lost or timed out
+    def poll_forwards(self, callback):
+        # submit the command
+        self.__submit_command('isForward', _Command(callback))
+
+    # polls the backwards state by sending a command to query if it's currently running anti-clockwise
+    # the callback function is called whenever the reply is received
+    # the callback will be called with 'None' if the connection is been lost or timed out
+    def poll_backwards(self, callback):
+        # submit the command
+        self.__submit_command('isBackward', _Command(callback))
+
+    # polls the step delay by sending a command to query its current step delay
+    # the callback function is called whenever the reply is received
+    # the callback will be called with 'None' if the connection is been lost or timed out
+    def poll_delay(self, callback):
+        # submit the command
+        self.__submit_command('getDelay', _Command(callback))
 
     # checks if the motor control is in a valid state, meaning it is connected to the controller with an open connection
     def is_valid(self):
@@ -299,8 +362,40 @@ class MotorControl:
     def is_stepping(self):
         return self.state >= 2
 
-    # sends a String command to the motor for interpretation
-    def send_command(self, cmd):
-        if self.debug:
-            self.message_func('[DEBUG] Sending command: \"' + cmd + '\"')
-        self.mi.send_command(cmd)
+
+# Helper class to treat and queue commands to the motor
+class _Command:
+    def __init__(self, callback):
+        self.callback = callback
+        self.reply = False
+        self.time_stamp = time.time()
+
+    # called when a reply has been received
+    def accept_value(self, value):
+        self.callback(value)
+        self.reply = True
+
+    # checks if a reply has been received
+    def has_reply(self):
+        return self.reply
+
+    # checks if the command has timed out
+    def is_timed_out(self, limit):
+        return (time.time() - self.time_stamp) > limit
+
+
+# Helper class to treat and queue commands to the motor, storing the reply on the object itself
+class _ValueCommand(_Command):
+    def __init__(self):
+        # call super constructor
+        _Command.__init__(self, self.set_value)
+        # initialize field for reply value
+        self.value = None
+
+    # setter for the reply value
+    def set_value(self, value):
+        self.value = value
+
+    # getter for the reply value
+    def get_value(self):
+        return self.value

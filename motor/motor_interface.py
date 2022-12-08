@@ -7,7 +7,7 @@ from serial.serialutil import SerialException
 
 # Class to interface with the stepper motor using String commands
 class MotorInterface:
-    def __init__(self, port, value_func, message_func):
+    def __init__(self, port, value_func, confirm_func, message_func):
         # Serial
         self.port = port
         self.ser = None
@@ -16,8 +16,10 @@ class MotorInterface:
         # Buffers
         self.command_buffer = []
         self.value_buffer = []
+        self.confirmation_buffer = []
         # Callbacks
         self.value_func = value_func
+        self.confirm_func = confirm_func
         self.message_func = message_func
         # Thread for reading messages
         self.read_thread = threading.Thread(target=self.__read_func)
@@ -50,6 +52,13 @@ class MotorInterface:
                         self.__handle_value(int(ln[3:]))
                     except ValueError:
                         self.__handle_invalid_value(ln[3:])
+                elif prefix == '[c]':
+                    # handle a confirmation
+                    try:
+                        self.__handle_confirmation(int(ln[3:]))
+                    except ValueError:
+                        self.__handle_invalid_value(ln[3:])
+
             # short delay
             time.sleep(0.05)
 
@@ -79,6 +88,11 @@ class MotorInterface:
         # we need a buffer here to handle them on the main thread
         self.value_buffer.append(value)
 
+    # method to handle confirmation replies, internal use only, do not call
+    def __handle_confirmation(self, value):
+        # we need a buffer here to handle them on the main thread
+        self.confirmation_buffer.append(value)
+
     # method to handle invalid values, internal use only, do not call
     def __handle_invalid_value(self, message):
         self.__handle_message(("Received invalid value: " + str(message)))
@@ -89,6 +103,15 @@ class MotorInterface:
 
     # tick loop method, must be called externally
     def update_tick(self):
+        # empty the confirmation buffer
+        if len(self.confirmation_buffer) > 0:
+            # Make a copy of the confirmation buffer and reset it
+            confirmations = self.confirmation_buffer[:]
+            self.confirmation_buffer = []
+            # Handle all confirmations
+            for confirmation in confirmations:
+                self.confirm_func(confirmation)
+        # empty the value buffer
         if len(self.value_buffer) > 0:
             # Make a copy of the value buffer and reset it
             values = self.value_buffer[:]
