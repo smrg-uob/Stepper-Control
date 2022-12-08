@@ -99,7 +99,7 @@ class MotorControl:
                 return
             # check commands for time outs
             for command in self.command_callbacks:
-                if command.is_timed_out():
+                if command.is_timed_out(self.time_out):
                     command.accept_value(None)
                     self.command_callbacks.remove(command)
             # short delay
