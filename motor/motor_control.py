@@ -88,8 +88,6 @@ class MotorControl:
                 # toggle flags
                 self.state = -1
                 self.time_stamp = -1
-                if self.command_flag:
-                    self.command_flag = False
                 # return 'None' on the callback
                 if self.command_callback is not None:
                     self.command_callback(None)
