@@ -88,10 +88,10 @@ class MotorControl:
                 # toggle flags
                 self.state = -1
                 self.time_stamp = -1
-                # return 'None' on the callback
-                if self.command_callback is not None:
-                    self.command_callback(None)
-                    self.command_callback = None
+                # return 'None' on the callbacks
+                for command in self.command_callbacks:
+                    command.accept_value(None)
+                    self.command_callbacks.remove(command)
                 # close the connection
                 self.stop_connection()
                 return
