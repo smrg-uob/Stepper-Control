@@ -169,18 +169,18 @@ class MotorControl:
             self.__send_string_command('stepper_control')
         return running
 
-    # halts program execution until the motor connection has been validated or timed out
-    def await_validation(self):
-        while True:
-            if self.is_validating():
-                # Motor is still validating, wait a bit longer
-                time.sleep(1)
-            else:
-                # Motor has stopped validating
-                if self.is_valid():
-                    return True
-                else:
-                    return False
+#    # halts program execution until the motor connection has been validated or timed out
+#    def await_validation(self):
+#        while True:
+#            if self.is_validating():
+#                # Motor is still validating, wait a bit longer
+#                time.sleep(1)
+#            else:
+#                # Motor has stopped validating
+#                if self.is_valid():
+#                    return True
+#                else:
+#                    return False
 
     # stops the motor connection
     def stop_connection(self):
